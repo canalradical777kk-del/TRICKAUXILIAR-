@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auxílio RzzX — Mock UI</title>
+  <style>
+    :root{
+      --bg:#060608;
+      --card:#0f0f11;
+      --muted:#bfc1c6;
+      --accent1:#8f56ff;
+      --accent2:#c89bff;
+      --glass: rgba(255,255,255,0.02);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background:radial-gradient(ellipse at top left, rgba(143,86,255,0.04), transparent 10%),
+                 radial-gradient(ellipse at bottom right, rgba(200,155,255,0.02), transparent 10%),
+                 var(--bg);
+      -webkit-font-smoothing:antialiased;
+      color:#fff;
+      overflow-y:auto;
+    }
+
+    /* particle background canvas covers whole screen */
+    #particle-canvas{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+    }
+
+    .center-wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      z-index:1;
+      position:relative;
+    }
+
+    /* panel smaller like you asked */
+    .card{
+      width: min(360px, 92vw);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+      border-radius:18px;
+      padding:22px;
+      box-shadow: 0 12px 40px rgba(140,80,255,0.08), inset 0 1px 0 rgba(255,255,255,0.02);
+      border: 1px solid rgba(140,80,255,0.06);
+      backdrop-filter: blur(6px);
+    }
+
+    .title{
+      text-align:center;
+      font-size:22px;
+      font-weight:700;
+      margin-bottom:14px;
+    }
+
+    .section{
+      background: rgba(255,255,255,0.02);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:12px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+
+    .accordion-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      font-weight:600;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .chev{
+      width:28px;height:28px;border-radius:8px;
+      display:grid;place-items:center;background:transparent;
+      border:1px solid rgba(255,255,255,0.02);
+      transition: transform .18s ease;
+    }
+
+    .accordion-body{ margin-top:10px; display:none; }
+    .accordion-body.active{ display:block; }
+
+    .checkbox-row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin:12px 0;
+    }
+    .checkbox{
+      width:22px; height:22px; border-radius:6px; display:grid;place-items:center;
+      background:#111; border:1px solid rgba(255,255,255,0.04); cursor:pointer;
+    }
+    .checkbox input{display:none;}
+    .checkbox svg{opacity:0; transform:scale(.8); transition: all .12s ease; }
+    .checkbox.checked{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); border: none; }
+    .checkbox.checked svg{ opacity:1; transform:scale(1); filter: drop-shadow(0 2px 6px rgba(140,80,255,.24)); }
+
+    .option-label{ flex:1; color:var(--muted); font-weight:600; }
+
+    .fov-row{ display:flex; align-items:center; gap:12px; margin-top:8px; color:var(--muted); }
+    .fov-row input[type=range]{ flex:1; -webkit-appearance: none; height:8px; border-radius:8px; background: linear-gradient(90deg,var(--accent1),var(--accent2)); outline:none; }
+    .fov-row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px;height:18px;border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.5); }
+
+    .buttons{ display:flex; flex-direction:column; gap:12px; margin-top:8px; }
+    .btn{
+      padding:12px 14px; border-radius:12px; font-weight:700; border:none; cursor:pointer;
+      background: linear-gradient(90deg,var(--accent1),var(--accent2));
+      color:#fff; box-shadow: 0 6px 20px rgba(143,86,255,0.18);
+    }
+    .btn.active{
+      outline: 2px solid rgba(255,255,255,0.06);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(143,86,255,0.22);
+    }
+    .btn.secondary{
+      background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      color:var(--muted); font-weight:700;
+    }
+
+    .small-note{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      margin-top:6px;
+    }
+
+    /* toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:36px;
+      background: linear-gradient(90deg,var(--accent1),var(--accent2));
+      color:#fff; padding:10px 18px; border-radius:12px;
+      box-shadow:0 8px 30px rgba(140,80,255,0.18); z-index:200;
+      opacity:0; pointer-events:none; transition:all .25s ease;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    /* small screens */
+    @media (max-width:420px){
+      .card{ padding:18px; border-radius:14px; }
+      .title{ font-size:20px; }
+    }
+
+  </style>
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="center-wrap">
+    <div class="card" role="main" aria-labelledby="pageTitle">
+      <div id="pageTitle" class="title">Auxílio RzzX</div>
+
+      <!-- Sistema Avançado (collapsed by default) -->
+      <div class="section">
+        <div class="accordion-head" data-accordion="sistema">
+          <div>▶ Sistema Avançado</div>
+          <div class="chev" aria-hidden>▸</div>
+        </div>
+        <div class="accordion-body" id="sistema-body">
+          <div style="margin-top:10px; display:flex;align-items:center; gap:10px;">
+            <label style="display:flex;gap:10px;align-items:center;">
+              <span class="checkbox checked" data-option="120fps" tabindex="0">
+                <input type="checkbox" checked />
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6 1L4.3 7.5 1.4 4.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="option-label">120 FPS</span>
+            </label>
+          </div>
+
+          <div style="margin-top:10px; display:flex;align-items:center; gap:10px;">
+            <label style="display:flex;gap:10px;align-items:center;">
+              <span class="checkbox" data-option="norecoil" tabindex="0">
+                <input type="checkbox" />
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6 1L4.3 7.5 1.4 4.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="option-label">No Recoil</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ajustes de Mira (open by default) -->
+      <div class="section">
+        <div class="accordion-head" data-accordion="mira">
+          <div>▼ Ajustes de Mira</div>
+          <div class="chev" aria-hidden>▾</div>
+        </div>
+        <div class="accordion-body active" id="mira-body">
+          <div class="checkbox-row">
+            <label style="display:flex;gap:10px;align-items:center;width:100%;">
+              <span class="checkbox checked" data-option="aimbot" tabindex="0">
+                <input type="checkbox" checked />
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6 1L4.3 7.5 1.4 4.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="option-label">Aimbot 90%</span>
+            </label>
+          </div>
+
+          <div class="checkbox-row">
+            <label style="display:flex;gap:10px;align-items:center;width:100%;">
+              <span class="checkbox checked" data-option="headtrick" tabindex="0">
+                <input type="checkbox" checked />
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6 1L4.3 7.5 1.4 4.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="option-label">Head Trick</span>
+            </label>
+          </div>
+
+          <div class="checkbox-row">
+            <label style="display:flex;gap:10px;align-items:center;width:100%;">
+              <span class="checkbox checked" data-option="neural" tabindex="0">
+                <input type="checkbox" checked />
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6 1L4.3 7.5 1.4 4.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="option-label">Neural Aim</span>
+            </label>
+          </div>
+
+          <div class="fov-row" style="margin-top:6px;">
+            <div style="font-weight:700;color:var(--muted);min-width:40px;">FOV</div>
+            <input id="fovRange" type="range" min="0" max="100" value="40" />
+            <div id="fovValue" style="width:26px;text-align:right;font-weight:700;color:var(--muted)">40</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Replace the three gradient buttons (removed DNS ones) -->
+      <div class="buttons">
+        <button id="injectorBtn" class="btn" data-toggle="false">Injector</button>
+        <button id="resBtn" class="btn" data-toggle="false">Ativar Resolução</button>
+        <button id="applyBtn" class="btn" data-toggle="false">Aplicar no jogo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /***********************
+     * Particle background  *
+     ***********************/
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = innerWidth;
+    let h = canvas.height = innerHeight;
+    window.addEventListener('resize', () => { w = canvas.width = innerWidth; h = canvas.height = innerHeight; initParticles(); });
+
+    const particles = [];
+    const PARTICLE_COUNT = Math.min(80, Math.floor((w*h)/60000)); // scale with viewport
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+
+    function initParticles(){
+      particles.length = 0;
+      for(let i=0;i<PARTICLE_COUNT;i++){
+        particles.push({
+          x: rand(0,w),
+          y: rand(0,h),
+          vx: rand(-0.3,0.3),
+          vy: rand(-0.3,0.3),
+          r: rand(0.8,1.8)
+        });
+      }
+    }
+    initParticles();
+
+    function step(){
+      ctx.clearRect(0,0,w,h);
+      // draw lines
+      for(let i=0;i<particles.length;i++){
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        if(p.x<0) p.x = w;
+        if(p.x> w) p.x = 0;
+        if(p.y<0) p.y = h;
+        if(p.y> h) p.y = 0;
+        // dot
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.globalAlpha = 0.85;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+        // lines to nearby
+        for(let j=i+1;j<particles.length;j++){
+          let q = particles[j];
+          let dx = p.x - q.x, dy = p.y - q.y;
+          let d2 = dx*dx + dy*dy;
+          if(d2 < 9000){ // threshold
+            let alpha = 0.0016*(9000 - d2);
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(140,86,255,${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(p.x,p.y);
+            ctx.lineTo(q.x,q.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    /*************************
+     * UI Interactions       *
+     *************************/
+    // accordions
+    document.querySelectorAll('.accordion-head').forEach(head=>{
+      head.addEventListener('click', ()=>{
+        const key = head.getAttribute('data-accordion');
+        const body = document.getElementById(key+'-body');
+        const chev = head.querySelector('.chev');
+        if(body.classList.contains('active')){
+          body.classList.remove('active'); if(chev) chev.style.transform = 'rotate(0deg)';
+        } else {
+          body.classList.add('active'); if(chev) chev.style.transform = 'rotate(90deg)';
+        }
+      });
+    });
+
+    // Toast
+    const toastEl = document.getElementById('toast');
+    let toastTimer = null;
+    function showToast(msg){
+      if(toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      toastTimer = setTimeout(()=>{ toastEl.classList.remove('show'); toastTimer = null; }, 3000);
+    }
+
+    // checkbox toggles
+    document.querySelectorAll('.checkbox').forEach(cb=>{
+      const input = cb.querySelector('input[type=checkbox]');
+      if(cb.classList.contains('checked')) input.checked = true;
+      cb.addEventListener('click', ()=>{
+        input.checked = !input.checked;
+        cb.classList.toggle('checked', input.checked);
+        const name = cb.getAttribute('data-option') || 'opção';
+        const pretty = mapPrettyName(name);
+        showToast(pretty + (input.checked ? ' ativado' : ' desativado'));
+      });
+      cb.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault();
+          cb.click();
+        }
+      });
+    });
+
+    function mapPrettyName(key){
+      switch(key){
+        case '120fps': return '120 FPS';
+        case 'norecoil': return 'No Recoil';
+        case 'aimbot': return 'Aimbot 90%';
+        case 'headtrick': return 'Head Trick';
+        case 'neural': return 'Neural Aim';
+        default: return key;
+      }
+    }
+
+    // fov range
+    const fovRange = document.getElementById('fovRange');
+    const fovValue = document.getElementById('fovValue');
+    if(fovRange){
+      fovRange.addEventListener('input', ()=> fovValue.textContent = fovRange.value);
+    }
+
+    // buttons: act as toggles and show ativado/desativado
+    function setupToggleButton(btnId, prettyName){
+      const btn = document.getElementById(btnId);
+      btn.addEventListener('click', ()=>{
+        const current = btn.getAttribute('data-toggle') === 'true';
+        const next = !current;
+        btn.setAttribute('data-toggle', next ? 'true' : 'false');
+        btn.classList.toggle('active', next);
+        showToast(prettyName + (next ? ' ativado' : ' desativado'));
+      });
+    }
+
+    setupToggleButton('injectorBtn','Injector');
+    setupToggleButton('resBtn','Ativar Resolução');
+    setupToggleButton('applyBtn','Aplicar no jogo');
+
+    // accessibility
+    document.querySelectorAll('.checkbox').forEach(el=> el.setAttribute('tabindex','0'));
+
+    // initialize particle count on load/resize
+    setTimeout(()=>{ w = canvas.width = innerWidth; h = canvas.height = innerHeight; initParticles(); }, 200);
+  </script>
+</body>
+</html>
