@@ -1,0 +1,258 @@
+<!DOCTYPE html><html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Keys Auxiliar — Painel (Owner) + Validador</title>
+  <style>
+    :root{--bg:#0f1226;--card:#0f1724;--accent:#7b61ff;--muted:#97a6c2}
+    body{font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#0b0d17,#0f1226);color:#e6eef6;padding:20px}
+    .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 420px;gap:16px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 10px;font-size:20px}
+    label{display:block;margin:8px 0 6px;color:var(--muted);font-size:13px}
+    input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button{background:linear-gradient(90deg,var(--accent),#9a7bff);border:0;padding:8px 10px;border-radius:8px;color:white;cursor:pointer}
+    .small{padding:6px 8px;font-size:13px}
+    .key-item{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);font-family:monospace;margin-bottom:8px}
+    .muted{color:var(--muted)}
+    .danger{color:#ff8a8a}
+    @media(max-width:980px){.wrap{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>Keys Auxiliar — Painel do Dono (Online) + Validador</h1>
+  <div class="wrap">
+    <!-- Left: User access & validator (site) -->
+    <div class="card">
+      <h2>Área de Acesso (usuário)</h2>
+      <label>Remote JSON URL (opcional) — se preenchido, o validador consulta este JSON para validar keys</label>
+      <input id="cfgRemoteUrl" type="text" placeholder="https://seurepo.github.io/keys/aux_keys.json" /><label>Campo: Insira a Key</label>
+  <input id="inputKeyUser" type="text" placeholder="cole a key aqui" />
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+    <button id="btnAccessUser">Acessar</button>
+    <button id="btnShowLocal" class="small">Mostrar keys (local)</button>
+    <label style="margin-left:auto" class="muted">Single-use local: <input id="cfgSingleUseLocal" type="checkbox" checked /></label>
+  </div>
+  <div id="userAccessInfo" style="margin-top:12px"></div>
+
+  <hr style="margin:14px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+  <div class="muted">Notas do validador:</div>
+  <ul class="muted">
+    <li>Se a <strong>Remote JSON URL</strong> estiver configurada, o validador tentará buscar as keys neste JSON (para uso em múltiplos dispositivos).</li>
+    <li>Se não houver URL, o validador usará as keys salvas localmente (no mesmo navegador).</li>
+    <li>Expiração e single-use são aplicadas tanto localmente quanto quando você usar um JSON remoto (desde que o JSON contenha os campos corretos — veja o formato abaixo).</li>
+  </ul>
+
+  <h3>Formato do JSON remoto esperado</h3>
+  <pre class="muted" style="font-size:13px;overflow:auto;background:rgba(0,0,0,0.15);padding:8px;border-radius:8px">{
+
+"keys": [ {"key":"AUX-abc123","createdAt":1690000000000,"expiresAt":1690086400000,"singleUse":true}, {"key":"R7N-xyz000","createdAt":1690003600000,"expiresAt":1690176400000,"singleUse":false} ] }</pre> </div>
+
+<!-- Right: Admin panel -->
+<div class="card">
+  <h2>Painel do Dono (autenticado)</h2>
+  <div id="adminLogin">
+    <label>Senha do dono</label>
+    <input id="adminPass" type="text" placeholder="coloque a senha do painel" />
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="btnLogin">Entrar</button>
+      <button id="btnUseLocal" class="small">Usar sem login (modo local)</button>
+    </div>
+  </div>
+
+  <div id="adminPanel" style="display:none;margin-top:10px">
+    <label>Backend para salvar as keys:</label>
+    <select id="selBackend">
+      <option value="local">Local (apenas neste navegador)</option>
+      <option value="json">Export/Import JSON (Github Pages)</option>
+      <option value="firebase">Firebase (Realtime DB ou Firestore)</option>
+    </select>
+
+    <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+
+    <label>Prefixo (opcional)</label>
+    <input id="inpPrefix" type="text" placeholder="ex: AUX- ou R7N-" />
+
+    <label>Validade (em horas)</label>
+    <input id="inpDurationH" type="number" value="24" min="1" />
+
+    <label><input id="inpSingleUseForce" type="checkbox" checked /> Forçar Single-use (sempre remove após uso)</label>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="btnCreateKey">Gerar Key (criar)</button>
+      <button id="btnExportJson" class="small">Exportar JSON</button>
+      <button id="btnClearAll" class="small danger">Remover todas (local)</button>
+    </div>
+
+    <label style="margin-top:8px">Remote JSON URL (preencha para que o site / validate consulte automaticamente)</label>
+    <input id="adminRemoteUrl" type="text" placeholder="URL pública onde ficará aux_keys.json" />
+    <small class="muted">Ex.: https://seurepo.github.io/keys/aux_keys.json</small>
+
+    <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+
+    <h3>Chaves atuais</h3>
+    <div id="adminKeysList" style="max-height:260px;overflow:auto"></div>
+
+    <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+    <div class="muted">Instruções rápidas:</div>
+    <ol class="muted">
+      <li>Gerar keys diretamente no painel. Cada key terá <strong>createdAt</strong> e <strong>expiresAt</strong>.</li>
+      <li>Clique em <em>Exportar JSON</em> para baixar um arquivo que você pode hospedar em GitHub Pages (ou outro host) como JSON público.</li>
+      <li>Depois de hospedado, cole a URL pública em <em>Remote JSON URL</em> no topo para que o validador use esse arquivo em todos dispositivos.</li>
+    </ol>
+
+  </div>
+
+</div>
+
+  </div>  <script>
+    // --- Storage format and helpers ---
+    const LOCAL_KEY = 'aux_keys_v2';
+    function now(){return Date.now();}
+    function loadLocal(){try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]')}catch(e){return []}}
+    function saveLocal(arr){localStorage.setItem(LOCAL_KEY, JSON.stringify(arr))}
+    function purgeExpired(arr){const t=now();return arr.filter(k=>!k.expiresAt || k.expiresAt>t)}
+    function genToken(len=20){return Array.from({length:len},()=>Math.random().toString(36)[2]||'x').join('')}
+    function formatDate(ts){const d=new Date(ts);return d.toLocaleString();}
+
+    // --- UI refs ---
+    const cfgRemoteUrl = document.getElementById('cfgRemoteUrl');
+    const inputKeyUser = document.getElementById('inputKeyUser');
+    const btnAccessUser = document.getElementById('btnAccessUser');
+    const userAccessInfo = document.getElementById('userAccessInfo');
+    const btnShowLocal = document.getElementById('btnShowLocal');
+    const cfgSingleUseLocal = document.getElementById('cfgSingleUseLocal');
+
+    const adminLogin = document.getElementById('adminLogin');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminPass = document.getElementById('adminPass');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnUseLocal = document.getElementById('btnUseLocal');
+
+    const selBackend = document.getElementById('selBackend');
+    const inpPrefix = document.getElementById('inpPrefix');
+    const inpDurationH = document.getElementById('inpDurationH');
+    const inpSingleUseForce = document.getElementById('inpSingleUseForce');
+    const btnCreateKey = document.getElementById('btnCreateKey');
+    const btnExportJson = document.getElementById('btnExportJson');
+    const btnClearAll = document.getElementById('btnClearAll');
+    const adminKeysList = document.getElementById('adminKeysList');
+    const adminRemoteUrl = document.getElementById('adminRemoteUrl');
+
+    // Simple password protection (client-side). For real security, use server auth.
+    const OWNER_PASSWORD = 'r7n-admin-2025'; // você pode mudar aqui antes de fazer upload
+
+    function requireAuth(){adminLogin.style.display='none'; adminPanel.style.display='block';}
+    btnLogin.addEventListener('click', ()=>{
+      if(adminPass.value===OWNER_PASSWORD){ requireAuth(); renderAdminKeys(); alert('Bem-vindo, dono.'); }
+      else alert('Senha incorreta');
+    });
+    btnUseLocal.addEventListener('click', ()=>{ adminLogin.style.display='none'; adminPanel.style.display='block'; renderAdminKeys(); });
+
+    // --- Admin actions ---
+    function createKey(){
+      const prefix = (inpPrefix.value||'').trim();
+      const hrs = Math.max(1, Number(inpDurationH.value)||24);
+      const singleUse = inpSingleUseForce.checked;
+      const k = (prefix ? prefix : '') + genToken(16);
+      const createdAt = now();
+      const expiresAt = createdAt + hrs*3600*1000;
+      const item = {key:k, createdAt, expiresAt, singleUse};
+      const arr = purgeExpired(loadLocal());
+      arr.push(item);
+      saveLocal(arr);
+      renderAdminKeys();
+      alert('Key criada: ' + k);
+    }
+    btnCreateKey.addEventListener('click', createKey);
+
+    function renderAdminKeys(){
+      const arr = purgeExpired(loadLocal());
+      saveLocal(arr);
+      adminKeysList.innerHTML='';
+      if(arr.length===0) adminKeysList.innerHTML='<div class="muted">Nenhuma key ativa.</div>';
+      arr.slice().reverse().forEach(item=>{
+        const div = document.createElement('div'); div.className='key-item';
+        div.innerHTML = `<div>${item.key}<div class=\"muted\" style=\"font-size:12px\">criada: ${formatDate(item.createdAt)} • expira: ${formatDate(item.expiresAt)}</div></div>`;
+        const btns = document.createElement('div');
+        const btCopy = document.createElement('button'); btCopy.className='small'; btCopy.textContent='Copiar'; btCopy.addEventListener('click', ()=>{ navigator.clipboard.writeText(item.key); btCopy.textContent='Copiado!'; setTimeout(()=>btCopy.textContent='Copiar',900); });
+        const btDel = document.createElement('button'); btDel.className='small'; btDel.textContent='Remover'; btDel.addEventListener('click', ()=>{ if(confirm('Remover esta key?')){ removeLocalKey(item.key); }});
+        btns.appendChild(btCopy); btns.appendChild(btDel);
+        div.appendChild(btns);
+        adminKeysList.appendChild(div);
+      });
+    }
+
+    function removeLocalKey(key){ const arr = loadLocal().filter(x=>x.key!==key); saveLocal(arr); renderAdminKeys(); }
+    btnClearAll.addEventListener('click', ()=>{ if(confirm('Remover todas as keys locais?')){ saveLocal([]); renderAdminKeys(); }});
+
+    // Export JSON
+    btnExportJson.addEventListener('click', ()=>{
+      const arr = purgeExpired(loadLocal());
+      const out = {keys: arr};
+      const blob = new Blob([JSON.stringify(out, null, 2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='aux_keys.json'; a.click(); URL.revokeObjectURL(url);
+      alert('Arquivo aux_keys.json gerado. Publique-o em GitHub Pages ou qualquer host estático e cole a URL no campo Remote JSON.');
+    });
+
+    // --- User validation logic ---
+    async function fetchRemoteKeys(url){
+      try{
+        const r = await fetch(url, {cache: 'no-store'});
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        if(Array.isArray(data)) return data; // allow raw array
+        return data.keys || [];
+      }catch(e){ console.warn('Erro fetch remote:', e); return null; }
+    }
+
+    async function validateKeyUser(){
+      const v = (inputKeyUser.value||'').trim(); if(!v){ userAccessInfo.innerHTML='<div class=\"muted\">Cole uma key válida.</div>'; return; }
+      const remoteUrl = (cfgRemoteUrl.value||adminRemoteUrl.value||'').trim();
+      let keys = null;
+      if(remoteUrl){
+        userAccessInfo.innerHTML = '<div class=\"muted\">Consultando remote JSON...</div>';
+        keys = await fetchRemoteKeys(remoteUrl);
+        if(keys===null){ userAccessInfo.innerHTML = '<div class=\"danger\">Erro ao buscar JSON remoto — tentando local</div>'; keys = purgeExpired(loadLocal()); }
+      } else {
+        keys = purgeExpired(loadLocal());
+      }
+
+      // find key
+      const found = keys.find(k => k.key === v || k === v);
+      if(found){
+        const item = (typeof found === 'string') ? {key:found} : found;
+        const tNow = now();
+        if(item.expiresAt && item.expiresAt <= tNow){ userAccessInfo.innerHTML = '<div class=\"danger\">Key expirou</div>'; return; }
+        userAccessInfo.innerHTML = '<div style=\"color:#9ff59a;font-weight:700\">Key válida — Acesso permitido</div>';
+        // protected content show
+        // handle single-use
+        const localSingleConf = cfgSingleUseLocal.checked;
+        const singleUse = item.singleUse || (inpSingleUseForce.checked && adminPanel.style.display!=='none');
+        if(singleUse){
+          // remove locally if exists
+          const arr = loadLocal().filter(x=>x.key!==item.key);
+          saveLocal(arr);
+          renderAdminKeys();
+          alert('Key usada e removida (single-use)');
+        }
+      } else {
+        userAccessInfo.innerHTML = '<div class=\"danger\">Key inválida</div>';
+      }
+    }
+    btnAccessUser.addEventListener('click', validateKeyUser);
+
+    btnShowLocal.addEventListener('click', ()=>{ const arr = loadLocal(); alert(arr.length?arr.map(x=>x.key+'  • expira: '+formatDate(x.expiresAt)).join('
+'):'Nenhuma key local'); });
+
+    // Load remote URL from admin field if present on load
+    window.addEventListener('load', ()=>{ cfgRemoteUrl.value = localStorage.getItem('cfgRemoteUrl')||''; adminRemoteUrl.value = localStorage.getItem('adminRemoteUrl')||''; renderAdminKeys(); });
+    cfgRemoteUrl.addEventListener('change', ()=>{ localStorage.setItem('cfgRemoteUrl', cfgRemoteUrl.value); });
+    adminRemoteUrl.addEventListener('change', ()=>{ localStorage.setItem('adminRemoteUrl', adminRemoteUrl.value); });
+
+    // Auto-purge expired on interval
+    setInterval(()=>{ const arr = purgeExpired(loadLocal()); saveLocal(arr); renderAdminKeys(); }, 30*1000);
+
+  </script></body>
+</html>
